@@ -9,5 +9,3 @@
        - Time-based (using delays to infer information)
    Out-of-band (using DNS or other network protocols)
   Second-order/Stored  (payload stored and executed later)
-
-  
